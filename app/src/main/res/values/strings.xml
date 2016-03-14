@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Movies</string>
-    <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="api_key">23de2dfbe8a8c1b2ab79ae18ee41150f</string>
 </resources>
