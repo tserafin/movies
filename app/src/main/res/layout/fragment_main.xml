@@ -10,15 +10,16 @@
 
     <GridView xmlns:android="http://schemas.android.com/apk/res/android"
         android:id="@+id/gridview_movies"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
         android:numColumns="auto_fit"
         android:columnWidth="150dp"
         android:verticalSpacing="10dp"
         android:horizontalSpacing="10dp"
         android:stretchMode="columnWidth"
-        android:gravity="center" />
+        android:gravity="center"
+        android:background="#909fff"
+        android:textFilterEnabled="false">
+
+    </GridView>
 </RelativeLayout>

@@ -1,5 +1,9 @@
 package com.example.tserafin.movies;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -7,10 +11,11 @@ import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.GridView;
 
 import com.example.tserafin.movies.adapter.ImageAdapter;
@@ -19,7 +24,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -30,6 +37,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -51,45 +59,61 @@ public class MovieFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         setHasOptionsMenu(true);
+
+        movieDetails = new ArrayList<>();
+        movieAdapter = new ImageAdapter(getContext());
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.moviefragment, menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        return super.onOptionsItemSelected(item);
-        //TODO: Menu stuff
+        switch (item.getItemId()) {
+            case R.id.action_refresh:
+                retrieveMovies();
+                Log.v("TESTING", "adapter count:" + movieAdapter.getCount());
+                return true;
+            default:
+                return super.onOptionsItemSelected(item);
+        }
     }
-
-
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
-        movieDetails = new ArrayList<>();
-        movieAdapter = new ImageAdapter(
-                getContext()
-        );
-
         GridView gridView = (GridView) rootView.findViewById(R.id.gridview_movies);
         gridView.setAdapter(movieAdapter);
         //click listener for going to other activity
-
         return rootView;
     }
+
+
 
     private void retrieveMovies() {
         FetchMoviesTask fetchMoviesTask = new FetchMoviesTask();
         fetchMoviesTask.execute(new Pair<>("api_key", getString(R.string.api_key)));
     }
 
-    public class FetchMoviesTask extends AsyncTask<Pair<String,String>, Void, Void> {
+    public class FetchMoviesTask extends AsyncTask<Pair<String,String>, Void, List<Drawable>> {
 
         private final String LOG_TAG = FetchMoviesTask.class.getSimpleName();
+
         @Override
-        protected Void doInBackground(Pair<String, String>... params) {
+        protected void onPostExecute(List<Drawable> drawables) {
+            if (drawables != null) {
+                Log.v(LOG_TAG, "Images retrieved: " + drawables);
+                movieAdapter.setImages(drawables);
+            }
+        }
+
+        @Override
+        protected List<Drawable> doInBackground(Pair<String, String>... params) {
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
             String jsonResponse = null;
@@ -149,19 +173,14 @@ public class MovieFragment extends Fragment {
                 }
             }
             try {
-                getImagesFromJson(jsonResponse, 20, apiKey);
+                return getImagesFromJson(jsonResponse, 20, apiKey);
             } catch (JSONException e) {
                 Log.e(LOG_TAG, "Error parsing JSON", e);
             }
             return null;
         }
 
-//        @Override
-//        protected void onPostExecute() {
-//            //TODO: traverse through downloaded images directory, set reference array to ids of all files
-//        }
-
-        private void getImagesFromJson(String movieJsonStr, int numMovies, String apiKey) throws JSONException {
+        private List<Drawable> getImagesFromJson(String movieJsonStr, int numMovies, String apiKey) throws JSONException {
             //JSON Objects
             final String TMDB_results = "results";
             final String TMDB_poster = "poster_path";
@@ -169,61 +188,68 @@ public class MovieFragment extends Fragment {
             //Store JSON results for later use (details screen)
             movieDetails.clear();
 
+            //Store images and load into adapter after all retrieved
+            List<Drawable> savedImages = new ArrayList<>();
+
             //Parse JSON
             JSONObject movieJson = new JSONObject(movieJsonStr);
             JSONArray moviesArray = movieJson.getJSONArray(TMDB_results);
             for(int i=0;(i<numMovies)&&(i<moviesArray.length());i++) {
                 JSONObject movie = moviesArray.getJSONObject(i);
                 movieDetails.add(movie);
-                String movieImagePath = movie.getString(TMDB_poster);
+                String movieImagePath = movie.getString(TMDB_poster).replace("/","");
                 //Request to get Image
 
                 try {
                     // Set up query
                     URL url;
                     if (apiKey != null) {
-                        String baseUrl = "http://http://image.tmdb.org/t/p/w150";
+                        String baseUrl = "http://image.tmdb.org/t/p/w150";
                         Uri.Builder builder = Uri.parse(baseUrl).buildUpon();
                         builder.appendPath(movieImagePath);
                         url = new URL(builder.build().toString());
                     } else {
                         throw new MalformedURLException("Missing API Key");
                     }
-                    saveImage(url, "test.jpg");
+                    savedImages.add(loadImage(url, movieImagePath));
                 } catch (MalformedURLException e) {
                     Log.e(LOG_TAG, "Incorrectly formed URL", e);
-                    return;
+                    return null;
                 }
             }
+            return savedImages;
         }
 
-        private void saveImage(URL imageUrl, String destinationFile){
-            InputStream is = null;
-            OutputStream os = null;
+        private Drawable loadImage(URL imageUrl, String destinationFile){
+            InputStream in = null;
+            BufferedInputStream is = null;
+            File cacheDir = getContext().getCacheDir();
+            File destFile = new File(cacheDir, destinationFile);
+            Drawable image = null;
             try {
                 HttpURLConnection urlConnection = (HttpURLConnection) imageUrl.openConnection();
-                is = urlConnection.getInputStream();
-                os = new FileOutputStream(destinationFile);
-                byte[] b = new byte[2048];
-                int length;
+                in = urlConnection.getInputStream();
+                is = new BufferedInputStream(in);
 
-                while ((length = is.read(b)) != -1) {
-                    os.write(b, 0, length);
-                }
-            } catch (IOException e) {
-                Log.e(LOG_TAG, "Error ", e);
+                // Convert the BufferedInputStream to a Bitmap
+                Bitmap bMap = BitmapFactory.decodeStream(is);
+
+                image = new BitmapDrawable(getResources(), bMap);
+            } catch (Exception e) {
+                Log.e("Error reading file", e.toString());
             } finally {
                 try {
-                    if (is != null) {
-                        is.close();
+                    if (in != null) {
+                        in.close();
                     }
                     if (is != null) {
-                        os.close();
+                        is.close();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+            return image;
         }
     }
 }

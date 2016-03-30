@@ -1,6 +1,8 @@
 package com.example.tserafin.movies.adapter;
 
 import android.content.Context;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
@@ -13,25 +15,26 @@ import java.util.List;
 public class ImageAdapter extends BaseAdapter {
 
     private Context mContext;
-    private List<Integer> mImageIds = new ArrayList<>();
+    private List<Drawable> mImages;
 
     public ImageAdapter(Context c) {
         mContext = c;
+        mImages = new ArrayList<>();
     }
 
     @Override
     public int getCount() {
-        return 0;
+        return mImages.size();
     }
 
     @Override
     public Object getItem(int position) {
-        return null;
+        return mImages.get(position);
     }
 
     @Override
     public long getItemId(int position) {
-        return 0;
+        return position;
     }
 
     @Override
@@ -39,19 +42,29 @@ public class ImageAdapter extends BaseAdapter {
         ImageView imageView;
         if (convertView == null) {
             imageView = new ImageView(mContext);
-            imageView.setLayoutParams(new GridView.LayoutParams(85, 85));
             imageView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            imageView.setPadding(8,8,8,8);
+            imageView.setLayoutParams(new GridView.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         } else {
             imageView = (ImageView) convertView;
         }
 
-        imageView.setImageResource(mImageIds.get(position));
+        imageView.setImageDrawable(mImages.get(position));
         return imageView;
     }
 
-    public void setImageReferences(List<Integer> ids) {
-        mImageIds.clear();
-        mImageIds.addAll(ids);
+    public void clearImages() {
+        mImages.clear();
+    }
+
+    public void addImage(Drawable image) {
+        mImages.add(image);
+        notifyDataSetChanged();
+    }
+
+    public void setImages(List<Drawable> ids) {
+        mImages.clear();
+        mImages.addAll(ids);
     }
 }
