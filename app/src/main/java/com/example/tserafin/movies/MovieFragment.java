@@ -27,16 +27,13 @@ import org.json.JSONObject;
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -46,6 +43,8 @@ public class MovieFragment extends Fragment {
 
     private ArrayList<JSONObject> movieDetails;
     private ImageAdapter movieAdapter;
+    private static final int IMAGE_WIDTH = 150;
+    private static final int IMAGE_HEIGHT = 660;
 
     public MovieFragment() {
     }
@@ -62,7 +61,18 @@ public class MovieFragment extends Fragment {
         setHasOptionsMenu(true);
 
         movieDetails = new ArrayList<>();
-        movieAdapter = new ImageAdapter(getContext());
+        movieAdapter = new ImageAdapter(getContext(), IMAGE_WIDTH, IMAGE_HEIGHT);
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        final View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+
+        final GridView gridView = (GridView) rootView.findViewById(R.id.gridview_movies);
+        gridView.setAdapter(movieAdapter);
+        //click listener for going to other activity
+        return rootView;
     }
 
     @Override
@@ -83,17 +93,10 @@ public class MovieFragment extends Fragment {
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-
-        GridView gridView = (GridView) rootView.findViewById(R.id.gridview_movies);
-        gridView.setAdapter(movieAdapter);
-        //click listener for going to other activity
-        return rootView;
+    public void onResume() {
+        super.onResume();
+        movieAdapter.notifyDataSetChanged();
     }
-
-
 
     private void retrieveMovies() {
         FetchMoviesTask fetchMoviesTask = new FetchMoviesTask();
@@ -109,6 +112,7 @@ public class MovieFragment extends Fragment {
             if (drawables != null) {
                 Log.v(LOG_TAG, "Images retrieved: " + drawables);
                 movieAdapter.setImages(drawables);
+                movieAdapter.notifyDataSetChanged();
             }
         }
 
@@ -204,7 +208,7 @@ public class MovieFragment extends Fragment {
                     // Set up query
                     URL url;
                     if (apiKey != null) {
-                        String baseUrl = "http://image.tmdb.org/t/p/w150";
+                        String baseUrl = "http://image.tmdb.org/t/p/w" + IMAGE_WIDTH;
                         Uri.Builder builder = Uri.parse(baseUrl).buildUpon();
                         builder.appendPath(movieImagePath);
                         url = new URL(builder.build().toString());
